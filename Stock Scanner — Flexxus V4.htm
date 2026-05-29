@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Stock Scanner — Flexxus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+<link href="Stock%20Scanner%20%E2%80%94%20Flexxus%20V4_files/css2.css" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24;
+  --border:rgba(255,255,255,.07); --border-hi:rgba(255,255,255,.15);
+  --accent:#00e5a0; --accent-dim:rgba(0,229,160,.12); --accent-glow:rgba(0,229,160,.3);
+  --warn:#ff6b35; --warn-dim:rgba(255,107,53,.12);
+  --text:#f0f0f5; --text2:#8888a0; --text3:#44445a;
+  --mono:'DM Mono',monospace; --sans:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 16px 80px}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,160,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,160,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;width:100%;max-width:480px}
+header{padding:28px 0 20px;text-align:center}
+.logo-mark{display:inline-flex;align-items:center;gap:10px;margin-bottom:8px}
+.logo-icon{width:32px;height:32px;border:1.5px solid var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px var(--accent-glow)}
+.logo-icon svg{width:16px;height:16px}
+.logo-text{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text2)}
+h1{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+h1 span{color:var(--accent)}
+.subtitle{font-size:13px;color:var(--text2);margin-top:6px}
+
+/* Config */
+.config-panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:12px}
+.config-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.field{flex:1;min-width:90px}
+.field label{display:block;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;font-family:var(--mono)}
+.field input,.field select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;padding:8px 10px;outline:none;transition:border-color .2s}
+.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.field select option{background:#1a1a24}
+.btn-primary{background:var(--accent);color:#000;border:none;border-radius:8px;font-family:var(--sans);font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;white-space:nowrap;transition:opacity .15s,transform .1s}
+.btn-primary:hover{opacity:.88}.btn-primary:active{transform:scale(.97)}.btn-primary:disabled{opacity:.35;cursor:not-allowed}
+.status-bar{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:12px;color:var(--text2);font-family:var(--mono)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .3s}
+.dot.ok{background:var(--accent);box-shadow:0 0 6px var(--accent)}
+.dot.err{background:var(--warn);box-shadow:0 0 6px var(--warn)}
+.dot.spin{background:#f5c542;animation:blink 1s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Scanner */
+.scanner-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:12px;transition:border-color .3s}
+.scanner-card.cam-on{border-color:var(--accent)}
+.scan-wrap{position:relative;margin-bottom:12px}
+.scan-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--text3);pointer-events:none}
+#barcodeInput{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:16px;font-weight:500;padding:12px 12px 12px 42px;outline:none;letter-spacing:.04em;transition:border-color .2s,box-shadow .2s}
+#barcodeInput:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+#barcodeInput::placeholder{color:var(--text3);font-size:13px;letter-spacing:0}
+.cam-row{display:flex;gap:8px;margin-bottom:10px}
+.btn-cam{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--sans);font-size:14px;font-weight:700;padding:12px;cursor:pointer;transition:border-color .2s,background .2s}
+.btn-cam:hover{border-color:var(--accent);background:var(--accent-dim)}
+.btn-cam.on{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+.btn-cam svg{width:20px;height:20px;flex-shrink:0}
+.btn-stop{background:var(--warn-dim);border:1.5px solid rgba(255,107,53,.3);border-radius:10px;color:var(--warn);font-family:var(--sans);font-size:13px;font-weight:700;padding:12px 16px;cursor:pointer;transition:background .2s;white-space:nowrap}
+.btn-stop:hover{background:rgba(255,107,53,.2)}
+
+/* Viewfinder */
+.cam-box{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;margin-bottom:10px;display:none;aspect-ratio:4/3}
+.cam-box.visible{display:block}
+#camVideo{width:100%;height:100%;object-fit:cover;display:block}
+.cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.cam-frame{width:75%;max-width:260px;aspect-ratio:3/1;position:relative}
+.cam-frame::before,.cam-frame::after,.cam-inner::before,.cam-inner::after{content:'';position:absolute;width:22px;height:22px;border-color:var(--accent);border-style:solid}
+.cam-frame::before{top:0;left:0;border-width:2px 0 0 2px}
+.cam-frame::after{top:0;right:0;border-width:2px 2px 0 0}
+.cam-inner::before{bottom:0;left:0;border-width:0 0 2px 2px}
+.cam-inner::after{bottom:0;right:0;border-width:0 2px 2px 0}
+.cam-laser{position:absolute;left:10%;right:10%;top:50%;height:1.5px;background:var(--accent);box-shadow:0 0 8px var(--accent),0 0 20px var(--accent-glow);animation:laser 2s ease-in-out infinite}
+@keyframes laser{0%,100%{top:15%;opacity:.6}50%{top:85%;opacity:1}}
+.cam-label{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;font-family:var(--mono);color:rgba(255,255,255,.7);text-shadow:0 1px 4px rgba(0,0,0,.8)}
+.cam-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .08s}
+.cam-flash.on{opacity:.4}
+.scan-hint{font-size:11px;color:var(--text3);font-family:var(--mono);text-align:center}
+.scan-hint kbd{display:inline-block;border:1px solid var(--border-hi);border-radius:4px;padding:1px 5px;font-size:10px;color:var(--text2)}
+
+/* No-support banner */
+.cam-unsupported{display:none;background:var(--warn-dim);border:1px solid rgba(255,107,53,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--warn);font-family:var(--mono);margin-bottom:10px;text-align:center}
+.cam-unsupported.show{display:block}
+
+/* Result */
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px;animation:up .25s ease-out}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.art-code{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.art-name{font-size:17px;font-weight:700;line-height:1.3;margin-bottom:14px}
+.stock-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.stock-cell{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.stock-cell.hi{background:var(--accent-dim);border-color:rgba(0,229,160,.25)}
+.stock-cell.lo{background:var(--warn-dim);border-color:rgba(255,107,53,.25)}
+.s-lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:4px}
+.s-val{font-size:26px;font-weight:800;line-height:1;font-family:var(--mono)}
+.stock-cell.hi .s-val{color:var(--accent)}.stock-cell.lo .s-val{color:var(--warn)}
+.art-meta{display:flex;flex-wrap:wrap;gap:6px}
+.pill{font-size:11px;font-family:var(--mono);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;color:var(--text2)}
+
+/* Error */
+.msg-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;text-align:center;margin-bottom:12px;animation:up .25s ease-out}
+.msg-card.err{border-color:rgba(255,107,53,.3)}
+.msg-ico{font-size:30px;margin-bottom:10px}
+.msg-ttl{font-size:15px;font-weight:700;margin-bottom:4px}
+.msg-card.err .msg-ttl{color:var(--warn)}
+.msg-sub{font-size:13px;color:var(--text2);font-family:var(--mono)}
+
+/* Skeleton */
+.skeleton{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px}
+.sk-ln{height:11px;background:linear-gradient(90deg,var(--surface2) 25%,var(--surface) 50%,var(--surface2) 75%);background-size:200% 100%;border-radius:6px;animation:sh 1.4s infinite;margin-bottom:9px}
+@keyframes sh{to{background-position:-200% 0}}
+.sk-ln.w60{width:60%}.sk-ln.w40{width:40%}
+.sk-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.sk-cell{height:70px;background:var(--surface2);border-radius:10px;animation:sh 1.4s infinite}
+
+/* History */
+.h-ttl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:8px}
+.h-list{display:flex;flex-direction:column;gap:6px}
+.h-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;transition:border-color .15s,background .15s}
+.h-item:hover{border-color:var(--border-hi);background:var(--surface2)}
+.h-bc{font-family:var(--mono);font-size:12px;color:var(--text2);flex:1}
+.h-nm{font-size:12px;color:var(--text);flex:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.h-st{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);min-width:32px;text-align:right}
+.h-st.lo{color:var(--warn)}
+#app{width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo-mark">
+      <div class="logo-icon">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="2" height="12" fill="#00e5a0"></rect><rect x="5" y="2" width="1" height="12" fill="#00e5a0"></rect><rect x="7" y="2" width="2" height="12" fill="#00e5a0"></rect><rect x="10" y="2" width="1" height="12" fill="#00e5a0"></rect><rect x="12" y="2" width="2" height="12" fill="#00e5a0"></rect></svg>
+      </div>
+      <span class="logo-text">Flexxus API</span>
+    </div>
+    <h1>Stock <span>Scanner</span></h1>
+    <p class="subtitle">Consultá stock en tiempo real por código de barras</p>
+  </header>
+  <div id="app"><div class="config-panel">
+    <div class="config-row">
+      <div class="field" style="flex:.8;min-width:80px">
+        <label>Usuario</label>
+        <input id="cfgU" value="MAXIMG" autocomplete="off">
+      </div>
+      <div class="field" style="flex:.8;min-width:80px">
+        <label>Contraseña</label>
+        <input id="cfgP" type="password" value="MAXIMG">
+      </div>
+      <div class="field" style="flex:1.4">
+        <label>Depósito</label>
+        <select id="cfgD">
+          <option value="001" selected="selected">URQUIZA</option><option value="002">GALICIA</option><option value="003">DEV. URQUIZA</option><option value="004">DEV. GALICIA</option><option value="005">MAYORISTA</option><option value="006">VAMOS RAPIDO</option><option value="007">MERCADO LIBRE</option><option value="008">GALPÓN SIRIA</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="btnConn">
+        ↺
+      </button>
+    </div>
+    <div class="status-bar">
+      <span class="dot ok"></span>
+      <span>Conectado · 8 depósito(s)</span>
+    </div></div><div class="scanner-card" id="scannerCard">
+    <div class="scan-wrap">
+      <svg class="scan-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="3" y="5" width="3" height="14" rx="1"></rect>
+        <rect x="7.5" y="5" width="1.5" height="14" rx=".5"></rect>
+        <rect x="10.5" y="5" width="2.5" height="14" rx=".5"></rect>
+        <rect x="14.5" y="5" width="1.5" height="14" rx=".5"></rect>
+        <rect x="17.5" y="5" width="3" height="14" rx="1"></rect>
+      </svg>
+      <input id="barcodeInput" type="text" placeholder="Escribí o escaneá el código…" autocomplete="off" inputmode="numeric">
+    </div>
+    <div class="cam-row">
+      <button class="btn-cam" id="btnCam">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        Usar cámara
+      </button>
+    </div>
+    <div class="cam-unsupported" id="camUnsupported">
+      Tu navegador no soporta BarcodeDetector. Actualizá Chrome o usá el campo de texto.
+    </div>
+    <div class="cam-box" id="camBox">
+      <video id="camVideo" playsinline="" muted="muted"></video>
+      <div class="cam-overlay">
+        <div class="cam-frame"><div class="cam-inner"></div><div class="cam-laser"></div></div>
+      </div>
+      <div class="cam-flash" id="camFlash"></div>
+      <div class="cam-label" id="camLabel">Apuntá al código de barras</div>
+    </div>
+    <p class="scan-hint" id="scanHint">
+      Escribí el código y presioná <kbd>Enter</kbd>
+    </p></div></div>
+</div>
+
+<script>
+'use strict';
+const API_BASE = 'https://brufau.procomisp.com.ar';
+const DEVICE   = '{"model":"0","platform":"0","uuid":"4953457348957348975","version":"0","manufacturer":"0"}';
+
+let token      = null;
+let deposits   = [];
+let scanHistory = [];
+let camStream  = null;
+let camRunning = false;
+let detector   = null;
+let rafId      = null;
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const S = {
+  connected:false, connecting:false, authError:null,
+  user:'MAXIMG', pass:'MAXIMG',
+  barcode:'', searching:false,
+  result:null, error:null, selectedDeposit:''
+};
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  app.appendChild(buildConfig());
+  if (S.connected) app.appendChild(buildScanner());
+  if (S.searching)      app.appendChild(buildSkeleton());
+  else if (S.result)    app.appendChild(buildResult());
+  else if (S.error)     app.appendChild(buildError());
+  if (scanHistory.length && !S.searching) app.appendChild(buildHistory());
+}
+
+// ─── Config panel ─────────────────────────────────────────────────────────────
+function buildConfig() {
+  const d = el('div','config-panel');
+  d.innerHTML = `
+    <div class="config-row">
+      <div class="field" style="flex:.8;min-width:80px">
+        <label>Usuario</label>
+        <input id="cfgU" value="${S.user}" autocomplete="off">
+      </div>
+      <div class="field" style="flex:.8;min-width:80px">
+        <label>Contraseña</label>
+        <input id="cfgP" type="password" value="${S.pass}">
+      </div>
+      <div class="field" style="flex:1.4">
+        <label>Depósito</label>
+        <select id="cfgD">
+          ${S.connected && deposits.length
+            ? deposits.map(d=>`<option value="${d.codigodeposito}"${d.codigodeposito===S.selectedDeposit?' selected':''}>${d.descripcion}</option>`).join('')
+            : `<option value="">${S.connected?'Sin depósitos':'— conectar —'}</option>`}
+        </select>
+      </div>
+      <button class="btn-primary" id="btnConn" ${S.connecting?'disabled':''}>
+        ${S.connecting?'…':S.connected?'↺':'Conectar'}
+      </button>
+    </div>
+    <div class="status-bar">
+      <span class="dot ${S.connected?'ok':S.connecting?'spin':S.authError?'err':''}"></span>
+      <span>${S.connected?`Conectado · ${deposits.length} depósito(s)`:S.connecting?'Autenticando…':S.authError||'Sin conexión'}</span>
+    </div>`;
+  d.querySelector('#btnConn').onclick = () =>
+    connect(d.querySelector('#cfgU').value.trim(), d.querySelector('#cfgP').value.trim());
+  return d;
+}
+
+// ─── Scanner panel ────────────────────────────────────────────────────────────
+function buildScanner() {
+  const hasBD = 'BarcodeDetector' in window;
+  const d = el('div','scanner-card'); d.id='scannerCard';
+  d.innerHTML = `
+    <div class="scan-wrap">
+      <svg class="scan-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="3" y="5" width="3" height="14" rx="1"/>
+        <rect x="7.5" y="5" width="1.5" height="14" rx=".5"/>
+        <rect x="10.5" y="5" width="2.5" height="14" rx=".5"/>
+        <rect x="14.5" y="5" width="1.5" height="14" rx=".5"/>
+        <rect x="17.5" y="5" width="3" height="14" rx="1"/>
+      </svg>
+      <input id="barcodeInput" type="text" placeholder="Escribí o escaneá el código…"
+        value="${S.barcode}" autocomplete="off" inputmode="numeric">
+    </div>
+    <div class="cam-row">
+      <button class="btn-cam" id="btnCam">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        Usar cámara
+      </button>
+    </div>
+    <div class="cam-unsupported" id="camUnsupported">
+      Tu navegador no soporta BarcodeDetector. Actualizá Chrome o usá el campo de texto.
+    </div>
+    <div class="cam-box" id="camBox">
+      <video id="camVideo" playsinline muted></video>
+      <div class="cam-overlay">
+        <div class="cam-frame"><div class="cam-inner"></div><div class="cam-laser"></div></div>
+      </div>
+      <div class="cam-flash" id="camFlash"></div>
+      <div class="cam-label" id="camLabel">Apuntá al código de barras</div>
+    </div>
+    <p class="scan-hint" id="scanHint">
+      ${hasBD ? 'Presioná la cámara o escribí y presioná <kbd>Enter</kbd>' : 'Escribí el código y presioná <kbd>Enter</kbd>'}
+    </p>`;
+
+  const inp = d.querySelector('#barcodeInput');
+  setTimeout(() => inp.focus(), 60);
+
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && inp.value.trim()) search(inp.value.trim());
+  });
+  // Hardware barcode scanner (rapid input)
+  let hw; inp.addEventListener('input', () => {
+    clearTimeout(hw);
+    hw = setTimeout(() => { if (inp.value.trim().length >= 4) search(inp.value.trim()); }, 120);
+  });
+
+  d.querySelector('#btnCam').onclick = () => {
+    if (camRunning) { stopCam(); return; }
+    if (!hasBD) { d.querySelector('#camUnsupported').classList.add('show'); return; }
+    openCam(d);
+  };
+
+  return d;
+}
+
+// ─── Camera ───────────────────────────────────────────────────────────────────
+async function openCam(scannerDiv) {
+  const box   = scannerDiv.querySelector('#camBox');
+  const btn   = scannerDiv.querySelector('#btnCam');
+  const label = scannerDiv.querySelector('#camLabel');
+  const card  = scannerDiv;
+
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }
+    });
+  } catch(e) {
+    const hint = scannerDiv.querySelector('#scanHint');
+    if (hint) hint.textContent = 'Sin permiso a cámara: ' + e.message;
+    return;
+  }
+
+  const video = scannerDiv.querySelector('#camVideo');
+  video.srcObject = camStream;
+  await video.play();
+
+  box.classList.add('visible');
+  btn.classList.add('on');
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Detener`;
+  card.classList.add('cam-on');
+  camRunning = true;
+
+  // Init BarcodeDetector
+  detector = new BarcodeDetector({
+    formats:['ean_13','ean_8','code_128','code_39','itf','upc_a','upc_e','qr_code','data_matrix','codabar']
+  });
+
+  let lastCode = null, cooldown = false;
+
+  async function tick() {
+    if (!camRunning) return;
+    try {
+      const codes = await detector.detect(video);
+      if (codes.length && !cooldown) {
+        const code = codes[0].rawValue;
+        if (code && code !== lastCode) {
+          lastCode = code; cooldown = true;
+          // Flash
+          const flash = document.getElementById('camFlash');
+          if (flash){ flash.classList.add('on'); setTimeout(()=>flash.classList.remove('on'),150); }
+          // Vibrate
+          if (navigator.vibrate) navigator.vibrate(70);
+          // Fill input
+          const inp = document.getElementById('barcodeInput');
+          if (inp) inp.value = code;
+          // Search & stop
+          search(code);
+          setTimeout(()=>{ stopCam(); cooldown=false; }, 700);
+        }
+      }
+    } catch(_){}
+    if (camRunning) rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
+}
+
+function stopCam() {
+  camRunning = false;
+  if (rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  if (detector){ detector=null; }
+  if (camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+  const box  = document.getElementById('camBox');
+  const btn  = document.getElementById('btnCam');
+  const card = document.getElementById('scannerCard');
+  if (box)  box.classList.remove('visible');
+  if (card) card.classList.remove('cam-on');
+  if (btn){
+    btn.classList.remove('on');
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Usar cámara`;
+  }
+  const inp = document.getElementById('barcodeInput');
+  if (inp) setTimeout(()=>inp.focus(), 60);
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+function search(barcode) {
+  const dep = document.querySelector('#cfgD')?.value || S.selectedDeposit;
+  S.selectedDeposit = dep;
+  doSearch(barcode, dep);
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function buildResult() {
+  const dep  = deposits.find(d=>d.codigodeposito===S.selectedDeposit);
+  const name = dep ? dep.descripcion : S.selectedDeposit||'Todos';
+  const a = S.result;
+  const rem  = a.STOCKREMANENTE??a.stockremanente??0;
+  const real = a.STOCKREAL??a.stockreal??0;
+  const disp = a.STOCKDISPONIBLE??a.stockdisponible??0;
+  const np   = a.NPRESERVADA??a.npreservada??0;
+  const lo   = rem<=0;
+  const d = el('div','result-card');
+  d.innerHTML=`
+    <div class="art-code">${a.CODIGOARTICULO||a.codigoarticulo||'—'} · ${a.CODIGOPARTICULAR||a.codigoparticular||'—'}</div>
+    <div class="art-name">${a.descripcion||a.DESCRIPCION||'—'}</div>
+    <div class="stock-grid">
+      <div class="stock-cell hi"><div class="s-lbl">Remanente</div><div class="s-val">${rem}</div></div>
+      <div class="stock-cell ${lo?'lo':''}"><div class="s-lbl">Disponible</div><div class="s-val">${disp}</div></div>
+      <div class="stock-cell"><div class="s-lbl">Stock real</div><div class="s-val">${real}</div></div>
+      <div class="stock-cell"><div class="s-lbl">NP reservado</div><div class="s-val">${np}</div></div>
+    </div>
+    <div class="art-meta">
+      <span class="pill">📍 ${name}</span>
+      ${a.unidadMedida?`<span class="pill">UM: ${a.unidadMedida.codigounidadmedida}</span>`:''}
+      ${a.rubro?`<span class="pill">${a.rubro.descripcion}</span>`:''}
+      ${a.marca?`<span class="pill">${a.marca.descripcion}</span>`:''}
+      <span class="pill" style="margin-left:auto;color:var(--text3);font-size:10px">${new Date().toLocaleTimeString('es-AR')}</span>
+    </div>`;
+  return d;
+}
+
+function buildError() {
+  const d = el('div','msg-card err');
+  d.innerHTML=`<div class="msg-ico">⚠</div><div class="msg-ttl">No se encontró</div><div class="msg-sub">${S.error}</div>`;
+  return d;
+}
+
+function buildSkeleton() {
+  const d = el('div','skeleton');
+  d.innerHTML='<div class="sk-ln w40"></div><div class="sk-ln w60"></div><div class="sk-grid"><div class="sk-cell"></div><div class="sk-cell"></div><div class="sk-cell"></div><div class="sk-cell"></div></div>';
+  return d;
+}
+
+function buildHistory() {
+  const wrap = el('div');
+  wrap.innerHTML='<div class="h-ttl">Últimas búsquedas</div>';
+  const list = el('div','h-list');
+  scanHistory.slice().reverse().slice(0,5).forEach(h=>{
+    const it = el('div','h-item');
+    const rem = h.result?.STOCKREMANENTE??h.result?.stockremanente??'—';
+    const lo  = typeof rem==='number'&&rem<=0;
+    it.innerHTML=`<span class="h-bc">${h.barcode}</span><span class="h-nm">${h.result?.descripcion||h.result?.DESCRIPCION||'No encontrado'}</span><span class="h-st ${lo?'lo':''}">${rem}</span>`;
+    it.onclick=()=>{ S.barcode=h.barcode; S.result=h.result; S.error=h.error; render(); };
+    list.appendChild(it);
+  });
+  wrap.appendChild(list);
+  return wrap;
+}
+
+function el(tag,cls){ const e=document.createElement(tag); if(cls)e.className=cls; return e; }
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+async function connect(user,pass) {
+  S.connecting=true; S.authError=null; S.connected=false;
+  render();
+  try {
+    const body=new URLSearchParams({username:user,password:pass,deviceinfo:DEVICE});
+    const res=await fetch(`${API_BASE}/v5/auth/login`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+    const data=await res.json();
+    if(!res.ok||!data.token) throw new Error(data.message||`HTTP ${res.status}`);
+    token=data.token; S.user=user; S.pass=pass; S.connected=true; S.connecting=false;
+    await loadDeposits();
+  } catch(e){ S.connecting=false; S.authError='Error: '+e.message; render(); }
+}
+
+async function loadDeposits() {
+  try {
+    const res=await fetch(`${API_BASE}/v5/depositos`,{headers:{Authorization:`Bearer ${token}`}});
+    const data=await res.json();
+    deposits=Array.isArray(data)?data:(data.data||[]);
+    S.selectedDeposit=deposits[0]?.codigodeposito||'';
+  } catch(_){ deposits=[]; }
+  render();
+}
+
+async function doSearch(barcode,dep) {
+  S.barcode=barcode; S.searching=true; S.result=null; S.error=null;
+  render();
+  try {
+    // 1. Find article
+    let r=await fetch(`${API_BASE}/v5/articulos?codigobarra=${encodeURIComponent(barcode)}&limit=1`,{headers:{Authorization:`Bearer ${token}`}});
+    let d=await r.json();
+    let list=Array.isArray(d)?d:(d.data||[]);
+    if(!list.length){
+      r=await fetch(`${API_BASE}/v5/articulos?codigoarticulo=${encodeURIComponent(barcode)}&limit=1`,{headers:{Authorization:`Bearer ${token}`}});
+      d=await r.json(); list=Array.isArray(d)?d:(d.data||[]);
+      if(!list.length) throw new Error(`Código "${barcode}" no encontrado`);
+    }
+    const art=list[0];
+    const cod=art.codigoarticulo||art.CODIGOARTICULO;
+
+    // 2. Get stock
+    let url=`${API_BASE}/v5/stock?codigoarticulo=${encodeURIComponent(cod)}`;
+    if(dep) url+=`&codigosdepositos=${encodeURIComponent(dep)}`;
+    const sr=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});
+    const sd=await sr.json();
+    const stocks=Array.isArray(sd)?sd:(sd.data||[]);
+    const merged={...art,...(stocks[0]||{}),descripcion:art.descripcion||art.DESCRIPCION};
+
+    S.searching=false; S.result=merged; S.selectedDeposit=dep;
+    scanHistory.push({barcode,result:merged,error:null});
+  } catch(e){
+    S.searching=false; S.error=e.message;
+    scanHistory.push({barcode,result:null,error:e.message});
+  }
+  render();
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+render();
+connect('MAXIMG','MAXIMG');
+</script>
+
+
+</body></html>
